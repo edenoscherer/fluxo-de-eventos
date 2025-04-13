@@ -1,13 +1,13 @@
-import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
-import { CompanyDTO, CompanyMapper, CompanyListResponseDTO } from '../../dtos/CompanyDTO.js';
-import { CompanyQueryInput } from '../../../domain/validation/company/CompanyValidation.js';
+import { CompanyListResponseDTO } from '@/application/dtos/CompanyDTO';
+import { ICompanyRepository } from '@/domain/repositories/ICompanyRepository';
+import { CompanyQueryInput } from '@/domain/validation/company/CompanyValidation';
 
 export class ListCompaniesUseCase {
   constructor(private readonly companyRepository: ICompanyRepository) {}
 
   async execute(query: CompanyQueryInput): Promise<CompanyListResponseDTO> {
     const { page, limit, status } = query;
-    let result;
+    let result: CompanyListResponseDTO;
 
     if (status) {
       result = await this.companyRepository.findByStatus(status, page, limit);
