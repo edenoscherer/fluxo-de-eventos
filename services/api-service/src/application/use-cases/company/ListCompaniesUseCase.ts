@@ -1,6 +1,6 @@
-import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository';
-import { CompanyDTO, CompanyMapper, CompanyListResponseDTO } from '../../dtos/CompanyDTO';
-import { CompanyQueryInput } from '../../validation/CompanySchemas';
+import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
+import { CompanyDTO, CompanyMapper, CompanyListResponseDTO } from '../../dtos/CompanyDTO.js';
+import { CompanyQueryInput } from '../../validation/CompanySchemas.js';
 
 export class ListCompaniesUseCase {
   constructor(private readonly companyRepository: ICompanyRepository) {}

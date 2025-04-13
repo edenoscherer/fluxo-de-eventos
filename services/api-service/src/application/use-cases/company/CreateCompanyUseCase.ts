@@ -1,8 +1,8 @@
-import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository';
-import { CompanyDTO, CompanyMapper } from '../../dtos/CompanyDTO';
-import { CreateCompanyInput } from '../../validation/CompanySchemas';
-import { Cnpj } from '../../../domain/value-objects/Cnpj';
-import { Email } from '../../../domain/value-objects/Email';
+import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
+import { CompanyDTO, CompanyMapper } from '../../dtos/CompanyDTO.js';
+import { CreateCompanyInput } from '../../validation/CompanySchemas.js';
+import { Cnpj } from '../../../domain/value-objects/Cnpj.js';
+import { Email } from '../../../domain/value-objects/Email.js';
 
 export class CreateCompanyUseCase {
   constructor(private readonly companyRepository: ICompanyRepository) {}

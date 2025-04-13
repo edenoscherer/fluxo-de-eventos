@@ -1,4 +1,4 @@
-import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository';
+import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
 
 export class DeleteCompanyUseCase {
   constructor(private readonly companyRepository: ICompanyRepository) {}
