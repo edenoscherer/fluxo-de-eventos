@@ -1,5 +1,5 @@
-import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
-import { CompanyDTO, CompanyMapper } from '../../dtos/CompanyDTO.js';
+import { ICompanyRepository } from '@/domain/repositories/ICompanyRepository';
+import { CompanyDTO, CompanyMapper } from '@/application/dtos/CompanyDTO';
 
 export class GetCompanyUseCase {
   constructor(private readonly companyRepository: ICompanyRepository) {}
