@@ -1,0 +1,1009 @@
+= Sistema de Automação de Fluxos
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 3
+:icons: font
+:source-highlighter: highlight.js
+:experimental:
+:imagesdir: images
+
+== 1. Visão Geral do Projeto
+
+=== 1.1. Introdução
+
+O Sistema de Automação de Fluxos é uma plataforma que permite às empresas automatizar processos de negócio através da criação de fluxos personalizados. Estes fluxos podem ser acionados por eventos, webhooks, ou agendamentos, e executam uma série de ações como envio de notificações, chamadas a APIs externas, e manipulação de dados.
+
+=== 1.2. Objetivos
+
+* Permitir que empresas automatizem processos de negócio sem necessidade de desenvolvimento personalizado
+* Oferecer uma plataforma extensível e escalável para integração com diversos sistemas
+* Fornecer uma interface intuitiva para criação e monitoramento de fluxos
+* Garantir isolamento de dados entre diferentes empresas
+* Possibilitar processamento assíncrono e paralelo de eventos
+
+=== 1.3. Escopo do MVP
+
+* Autenticação de usuários com JWT
+* Cadastro de empresas e usuários
+* Gerenciamento de entidades personalizáveis
+* Criação e execução de fluxos com condições e ações
+* Processamento de eventos via webhooks
+* Execução agendada de fluxos (CRON)
+* Envio de notificações (email, WhatsApp)
+* Chamadas a APIs externas
+* Logs de execução e monitoramento
+
+=== 1.4. Estrutura de Planos
+
+==== 1.4.1. Plano Free
+* 1 trigger por fluxo
+* Até 1 passo por fluxo
+* 1GB de armazenamento
+* 100 execuções de fluxo por mês
+* 1 usuário
+* Retenção de logs: 7 dias
+
+==== 1.4.2. Plano Básico
+* 1 trigger por fluxo
+* Até 3 passos por fluxo
+* 1GB de armazenamento
+* 1.000 execuções de fluxo por mês
+* 3 usuários
+* Retenção de logs: 30 dias
+* Cobrança adicional:
+** R$X por GB adicional
+** R$Y por 100 execuções adicionais
+
+==== 1.4.3. Plano Empresarial
+* Triggers ilimitados
+* Passos ilimitados por fluxo
+* Armazenamento configurável
+* Execuções ilimitadas
+* Usuários ilimitados
+* Retenção de logs: 90 dias ou configurável
+* Suporte prioritário
+* Possibilidade de infraestrutura dedicada
+
+== 2. Arquitetura do Sistema
+
+=== 2.1. Visão Geral da Arquitetura
+
+O sistema é composto por três microserviços principais, comunicando-se através de filas BullMQ com Redis como backend:
+
+[plantuml]
+....
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(cliente, "Cliente", "Usuário da plataforma")
+System_Boundary(sistema, "Sistema de Automação de Fluxos") {
+    Container(frontend, "Frontend", "React, TypeScript", "Interface de usuário para configuração e monitoramento")
+    
+    Container(api_service, "API Service", "Node.js, Express, TypeScript", "Gerencia entidades, fluxos e usuários")
+    Container(data_ingestion, "Data Ingestion Service", "Node.js, Express, TypeScript", "Recebe dados via webhooks e API")
+    Container(event_processor, "Event Processor Service", "Node.js, TypeScript", "Processa eventos e executa fluxos")
+    
+    ContainerDb(mongodb, "MongoDB", "MongoDB", "Armazena dados de empresas, entidades, fluxos e logs")
+    ContainerDb(redis, "Redis + BullMQ", "Redis", "Gerencia filas de mensagens e jobs")
+}
+
+System_Ext(email_service, "Serviço de Email", "Envia emails")
+System_Ext(whatsapp_api, "API WhatsApp", "Envia mensagens WhatsApp")
+System_Ext(external_apis, "APIs Externas", "Sistemas externos")
+
+Rel(cliente, frontend, "Acessa", "HTTPS")
+Rel(frontend, api_service, "Utiliza", "REST API")
+
+Rel(api_service, mongodb, "Lê/Escreve", "MongoDB Driver")
+Rel(api_service, redis, "Publica eventos", "BullMQ")
+
+Rel(data_ingestion, mongodb, "Lê/Escreve", "MongoDB Driver")
+Rel(data_ingestion, redis, "Publica eventos", "BullMQ")
+
+Rel(event_processor, mongodb, "Lê/Escreve", "MongoDB Driver")
+Rel(event_processor, redis, "Consome eventos", "BullMQ")
+
+Rel(event_processor, email_service, "Envia emails", "SMTP/API")
+Rel(event_processor, whatsapp_api, "Envia mensagens", "REST API")
+Rel(event_processor, external_apis, "Integra com", "REST API")
+
+Rel_U(external_apis, data_ingestion, "Envia dados", "Webhooks")
+@enduml
+....
+
+=== 2.2. Componentes Principais
+
+==== 2.2.1. API Service
+
+Responsável pela comunicação com o frontend, gerenciamento de usuários, empresas, entidades e fluxos.
+
+[plantuml]
+....
+@startuml
+package "API Service" {
+    [API Controllers] --> [Use Cases]
+    [Use Cases] --> [Domain Services]
+    [Domain Services] --> [Repositories]
+    [Repositories] --> [Database Adapters]
+    [Use Cases] --> [Event Publishers]
+    [Event Publishers] --> [BullMQ Adapter]
+}
+
+database "MongoDB" {
+    [Companies]
+    [Users]
+    [Entities]
+    [Flows]
+}
+
+queue "Redis/BullMQ" {
+    [Entity Updates Queue]
+    [Flow Executions Queue]
+}
+
+[Database Adapters] --> [MongoDB]
+[BullMQ Adapter] --> [Redis/BullMQ]
+@enduml
+....
+
+==== 2.2.2. Data Ingestion Service
+
+Responsável por receber dados via webhooks e API, processando-os e publicando eventos para o Event Processor.
+
+[plantuml]
+....
+@startuml
+package "Data Ingestion Service" {
+    [Webhook Controllers] --> [Webhook Processors]
+    [API Controllers] --> [Data Processors]
+    [Webhook Processors] --> [Event Publishers]
+    [Data Processors] --> [Event Publishers]
+    [Event Publishers] --> [BullMQ Adapter]
+    [Webhook Processors] --> [Repositories]
+    [Data Processors] --> [Repositories]
+    [Repositories] --> [Database Adapters]
+}
+
+database "MongoDB" {
+    [Webhook Data]
+    [Entity Records]
+}
+
+queue "Redis/BullMQ" {
+    [Webhook Events Queue]
+    [Data Events Queue]
+}
+
+[Database Adapters] --> [MongoDB]
+[BullMQ Adapter] --> [Redis/BullMQ]
+@enduml
+....
+
+==== 2.2.3. Event Processor Service
+
+Responsável por processar eventos, executar fluxos e realizar ações como envio de notificações e chamadas a APIs.
+
+[plantuml]
+....
+@startuml
+package "Event Processor Service" {
+    [BullMQ Workers] --> [Flow Executor]
+    [Flow Executor] --> [Condition Evaluator]
+    [Flow Executor] --> [Action Executor]
+    [Action Executor] --> [Email Action]
+    [Action Executor] --> [WhatsApp Action]
+    [Action Executor] --> [API Action]
+    [Action Executor] --> [Entity Action]
+    [Flow Executor] --> [Logger]
+    [Scheduler] --> [Flow Executor]
+    [BullMQ Workers] --> [Repositories]
+    [Repositories] --> [Database Adapters]
+}
+
+database "MongoDB" {
+    [Flows]
+    [Entities]
+    [Execution Logs]
+}
+
+queue "Redis/BullMQ" {
+    [Entity Updates Queue]
+    [Webhook Events Queue]
+    [Email Queue]
+    [WhatsApp Queue]
+    [API Queue]
+}
+
+[Database Adapters] --> [MongoDB]
+[BullMQ Workers] <-- [Redis/BullMQ]
+[Email Action] --> [Email Queue]
+[WhatsApp Action] --> [WhatsApp Queue]
+[API Action] --> [API Queue]
+@enduml
+....
+
+=== 2.3. Comunicação entre Serviços
+
+A comunicação entre os microserviços é realizada através de filas BullMQ, utilizando Redis como backend:
+
+[plantuml]
+....
+@startuml
+participant "API Service" as API
+participant "Data Ingestion Service" as DIS
+participant "Redis/BullMQ" as Queue
+participant "Event Processor Service" as EPS
+participant "External Systems" as EXT
+
+API -> Queue: Publica evento de atualização de entidade
+DIS -> Queue: Publica evento de recebimento de webhook
+Queue -> EPS: Consome eventos
+EPS -> EPS: Executa fluxo
+EPS -> Queue: Publica ações (email, WhatsApp, API)
+EPS -> EPS: Processa ações em paralelo
+EPS -> EXT: Executa ações externas
+EPS -> API: Atualiza status de execução (via MongoDB)
+@enduml
+....
+
+== 3. Modelo de Dados
+
+=== 3.1. Isolamento de Dados por Empresa
+
+Para garantir o isolamento adequado dos dados de cada empresa, adotaremos uma abordagem de banco de dados separado:
+
+* Cada empresa terá seu próprio banco de dados MongoDB
+* Nomenclatura: `company_{companyId}`
+* Banco de dados global apenas para dados do sistema (empresas, usuários, planos)
+
+==== 3.1.1. Vantagens desta abordagem:
+* Isolamento total dos dados
+* Facilidade para backups e restauração por empresa
+* Possibilidade de migração para infraestrutura dedicada
+* Controle granular de recursos por empresa
+* Segurança aprimorada
+
+==== 3.1.2. Estrutura de Collections
+
+Cada entidade terá sua própria collection, sem relações diretas entre elas:
+
+[source]
+----
+// Banco de dados global
+- companies
+- users
+- plans
+- usage_metrics
+
+// Dentro do banco company_{companyId}
+- entity_{entitySlug}
+- flow_definitions
+- flow_executions
+- webhooks
+- settings
+----
+
+=== 3.2. Modelo de Entidades
+
+==== 3.2.1. Definição de Entidade
+
+[source,json]
+----
+{
+  "_id": "ObjectId",
+  "name": "Pedido",
+  "slug": "pedidos",
+  "schema": {
+    "properties": {
+      "numero": { "type": "string", "required": true },
+      "cliente": { "type": "reference", "entitySlug": "clientes", "required": true },
+      "valor": { "type": "number", "required": true },
+      "status": { 
+        "type": "enum", 
+        "values": ["pendente", "aprovado", "enviado", "entregue", "cancelado"],
+        "default": "pendente"
+      },
+      "itens": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "produto": { "type": "string", "required": true },
+            "quantidade": { "type": "number", "required": true },
+            "valorUnitario": { "type": "number", "required": true }
+          }
+        }
+      }
+    },
+    "indexes": [
+      { "fields": { "numero": 1 }, "unique": true },
+      { "fields": { "cliente": 1, "status": 1 } }
+    ]
+  },
+  "settings": {
+    "permissions": {
+      "create": ["admin", "manager"],
+      "read": ["admin", "manager", "user"],
+      "update": ["admin", "manager"],
+      "delete": ["admin"]
+    },
+    "webhookEnabled": true,
+    "apiEnabled": true,
+    "auditEnabled": true
+  },
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+----
+
+==== 3.2.2. Registro de Entidade
+
+[source,json]
+----
+{
+  "_id": "ObjectId",
+  "data": {
+    "numero": "PED-001",
+    "cliente": "ObjectId(cliente1)",
+    "valor": 1500.00,
+    "status": "pendente",
+    "itens": [
+      {
+        "produto": "Notebook",
+        "quantidade": 1,
+        "valorUnitario": 1500.00
+      }
+    ]
+  },
+  "metadata": {
+    "createdBy": "ObjectId(user1)",
+    "lastModifiedBy": "ObjectId(user2)",
+    "source": "api",
+    "sourceDetails": {
+      "ipAddress": "192.168.1.1",
+      "userAgent": "Mozilla/5.0...",
+      "deviceId": "mobile-ios-12345"
+    },
+    "version": 1,
+    "tags": ["vip", "promocao"]
+  },
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+----
+
+=== 3.3. Modelo de Fluxos
+
+==== 3.3.1. Definição de Fluxo
+
+[source,json]
+----
+{
+  "_id": "ObjectId",
+  "name": "Notificação de Pedido Aprovado",
+  "description": "Envia email quando um pedido é aprovado",
+  "trigger": {
+    "type": "entity_update",
+    "entitySlug": "pedidos",
+    "conditions": {
+      "status": {
+        "changed": true,
+        "to": "aprovado"
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "step1",
+      "name": "Buscar Cliente",
+      "type": "entity_lookup",
+      "entitySlug": "clientes",
+      "lookupField": "data.cliente",
+      "storeAs": "cliente"
+    },
+    {
+      "id": "step2",
+      "name": "Enviar Email",
+      "type": "email",
+      "to": "{{cliente.data.email}}",
+      "subject": "Pedido {{data.numero}} Aprovado",
+      "body": "Olá {{cliente.data.nome}}, seu pedido {{data.numero}} foi aprovado."
+    },
+    {
+      "id": "step3",
+      "name": "Atualizar Pedido",
+      "type": "entity_update",
+      "entitySlug": "pedidos",
+      "entityId": "{{_id}}",
+      "updates": {
+        "data.notificacaoEnviada": true,
+        "data.dataNotificacao": "{{now}}"
+      }
+    }
+  ],
+  "errorHandling": {
+    "continueOnError": true,
+    "notifyOnError": true
+  },
+  "isActive": true,
+  "planLimits": {
+    "maxSteps": 3,
+    "maxTriggers": 1
+  },
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+----
+
+==== 3.3.2. Log de Execução
+
+[source,json]
+----
+{
+  "_id": "ObjectId",
+  "flowId": "ObjectId",
+  "executionId": "uuid-v4",
+  "trigger": {
+    "type": "entity_update",
+    "entitySlug": "pedidos",
+    "entityId": "ObjectId",
+    "changes": {
+      "status": {
+        "from": "pendente",
+        "to": "aprovado"
+      }
+    }
+  },
+  "status": "completed", // pending, running, completed, failed
+  "startedAt": "2023-01-01T10:00:00Z",
+  "completedAt": "2023-01-01T10:00:05Z",
+  "duration": 5000, // ms
+  "stepResults": [
+    {
+      "stepId": "step1",
+      "name": "Buscar Cliente",
+      "status": "completed",
+      "startedAt": "2023-01-01T10:00:00Z",
+      "completedAt": "2023-01-01T10:00:01Z",
+      "duration": 1000,
+      "error": null
+    },
+    {
+      "stepId": "step2",
+      "name": "Enviar Email",
+      "status": "completed",
+      "startedAt": "2023-01-01T10:00:01Z",
+      "completedAt": "2023-01-01T10:00:03Z",
+      "duration": 2000,
+      "result": {
+        "messageId": "email-123456"
+      },
+      "error": null
+    },
+    {
+      "stepId": "step3",
+      "name": "Atualizar Pedido",
+      "status": "completed",
+      "startedAt": "2023-01-01T10:00:03Z",
+      "completedAt": "2023-01-01T10:00:04Z",
+      "duration": 1000,
+      "error": null
+    }
+  ],
+  "error": null,
+  "createdAt": "2023-01-01T10:00:00Z"
+}
+----
+
+=== 3.4. Monitoramento de Uso
+
+[source,json]
+----
+{
+  "_id": "ObjectId",
+  "companyId": "ObjectId",
+  "month": "2023-01",
+  "plan": "basic",
+  "usage": {
+    "storage": {
+      "limit": 1073741824, // 1GB em bytes
+      "used": 536870912,   // 512MB em bytes
+      "percentage": 50
+    },
+    "executions": {
+      "limit": 1000,
+      "used": 750,
+      "percentage": 75
+    },
+    "users": {
+      "limit": 3,
+      "active": 2,
+      "percentage": 66.67
+    }
+  },
+  "overages": {
+    "storage": {
+      "amount": 0,
+      "cost": 0
+    },
+    "executions": {
+      "amount": 0,
+      "cost": 0
+    }
+  },
+  "alerts": [
+    {
+      "type": "executions",
+      "threshold": 75,
+      "triggeredAt": "2023-01-20T00:00:00Z",
+      "notified": true
+    }
+  ],
+  "updatedAt": "2023-01-25T00:00:00Z"
+}
+----
+
+== 4. Tipos de Triggers
+
+=== 4.1. Atualização de Entidade
+
+Dispara quando um registro de entidade é criado, atualizado ou excluído.
+
+[source,json]
+----
+{
+  "type": "entity_update",
+  "entitySlug": "pedidos",
+  "operations": ["create", "update", "delete"], // opcional, padrão é ["update"]
+  "conditions": {
+    "status": {
+      "changed": true,
+      "to": "aprovado"
+    },
+    "valor": {
+      "greaterThan": 1000
+    }
+  }
+}
+----
+
+=== 4.2. Agendamento (CRON)
+
+Dispara em horários específicos, seguindo uma expressão CRON.
+
+[source,json]
+----
+{
+  "type": "schedule",
+  "cron": "0 9 * * 1-5", // Executa às 9h em dias úteis
+  "timezone": "America/Sao_Paulo",
+  "parameters": {
+    "status": "pendente",
+    "olderThan": "24h"
+  }
+}
+----
+
+=== 4.3. Webhook
+
+Dispara quando dados são recebidos em um endpoint específico.
+
+[source,json]
+----
+{
+  "type": "webhook",
+  "endpoint": "/webhooks/{id}",
+  "secret": "s3cr3t-k3y",
+  "mapping": {
+    "orderId": "data.numero",
+    "customerName": "cliente.nome"
+  }
+}
+----
+
+=== 4.4. Manual
+
+Dispara quando acionado manualmente pelo usuário.
+
+[source,json]
+----
+{
+  "type": "manual",
+  "parameters": [
+    {
+      "name": "pedidoId",
+      "type": "string",
+      "required": true,
+      "description": "ID do pedido a processar"
+    }
+  ]
+}
+----
+
+== 5. Tipos de Passos (Steps)
+
+=== 5.1. Consulta de Entidade
+
+Busca registros em uma entidade.
+
+[source,json]
+----
+{
+  "id": "step1",
+  "name": "Buscar Cliente",
+  "type": "entity_lookup",
+  "entitySlug": "clientes",
+  "lookupField": "data.cliente",
+  "conditions": {
+    "data.ativo": true
+  },
+  "storeAs": "cliente"
+}
+----
+
+=== 5.2. Envio de Email
+
+Envia uma mensagem de email.
+
+[source,json]
+----
+{
+  "id": "step2",
+  "name": "Enviar Email",
+  "type": "email",
+  "to": "{{cliente.data.email}}",
+  "cc": "{{config.supportEmail}}",
+  "subject": "Pedido {{data.numero}} Aprovado",
+  "body": "Olá {{cliente.data.nome}}, seu pedido {{data.numero}} foi aprovado.",
+  "attachments": [
+    {
+      "filename": "recibo.pdf",
+      "content": "{{generatePdf(data)}}"
+    }
+  ]
+}
+----
+
+=== 5.3. Envio de WhatsApp
+
+Envia uma mensagem de WhatsApp.
+
+[source,json]
+----
+{
+  "id": "step3",
+  "name": "Enviar WhatsApp",
+  "type": "whatsapp",
+  "to": "{{cliente.data.telefone}}",
+  "message": "Olá {{cliente.data.nome}}, seu pedido {{data.numero}} foi aprovado e será enviado em breve."
+}
+----
+
+=== 5.4. Chamada de API
+
+Realiza uma chamada a uma API externa.
+
+[source,json]
+----
+{
+  "id": "step4",
+  "name": "Notificar Sistema de Logística",
+  "type": "api",
+  "url": "https://logistics-api.example.com/orders",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer {{config.LOGISTICS_API_KEY}}"
+  },
+  "body": {
+    "orderId": "{{data.numero}}",
+    "customer": "{{cliente.data.nome}}",
+    "value": "{{data.valor}}",
+    "items": "{{data.itens}}"
+  }
+}
+----
+
+=== 5.5. Atualização de Entidade
+
+Atualiza um registro de entidade.
+
+[source,json]
+----
+{
+  "id": "step5",
+  "name": "Atualizar Pedido",
+  "type": "entity_update",
+  "entitySlug": "pedidos",
+  "entityId": "{{_id}}",
+  "updates": {
+    "data.processadoEm": "{{now}}",
+    "data.notificacaoEnviada": true
+  }
+}
+----
+
+=== 5.6. Condição
+
+Avalia uma condição e direciona o fluxo.
+
+[source,json]
+----
+{
+  "id": "step6",
+  "name": "Verificar Valor do Pedido",
+  "type": "condition",
+  "condition": {
+    "operator": "and",
+    "conditions": [
+      {
+        "field": "data.valor",
+        "operator": "greaterThan",
+        "value": 1000
+      },
+      {
+        "field": "cliente.data.tipo",
+        "operator": "equals",
+        "value": "vip"
+      }
+    ]
+  },
+  "onTrue": "step7",
+  "onFalse": "step8"
+}
+----
+
+=== 5.7. Transformação
+
+Transforma dados e armazena em variáveis.
+
+[source,json]
+----
+{
+  "id": "step7",
+  "name": "Calcular Desconto",
+  "type": "transform",
+  "transformations": [
+    {
+      "target": "valorComDesconto",
+      "expression": "data.valor * 0.9" // 10% de desconto
+    },
+    {
+      "target": "economiaTotal",
+      "expression": "data.valor - valorComDesconto"
+    }
+  ]
+}
+----
+
+== 6. Casos de Uso
+
+=== 6.1. Gerenciamento de Empresas e Usuários
+
+==== 6.1.1. Cadastro de Empresa
+
+*Ator Principal*: Administrador do Sistema
+
+*Fluxo Principal*:
+1. Administrador acessa a área de cadastro de empresas
+2. Preenche os dados da empresa (nome, domínio, configurações)
+3. Sistema valida os dados
+4. Sistema cria a empresa no banco de dados
+5. Sistema cria um usuário administrador para a empresa
+6. Sistema provisiona um banco de dados dedicado para a empresa
+
+*Fluxos Alternativos*:
+- Dados inválidos: Sistema exibe mensagens de erro
+- Domínio já cadastrado: Sistema notifica que o domínio já está em uso
+
+==== 6.1.2. Gerenciamento de Usuários
+
+*Ator Principal*: Administrador da Empresa
+
+*Fluxo Principal*:
+1. Administrador acessa a área de usuários
+2. Visualiza lista de usuários da empresa
+3. Adiciona novo usuário com nome, email e permissões
+4. Sistema envia email de convite para o novo usuário
+5. Usuário define sua senha e acessa o sistema
+
+*Fluxos Alternativos*:
+- Email já cadastrado: Sistema notifica que o email já está em uso
+- Permissões inválidas: Sistema valida as permissões conforme regras da empresa
+
+=== 6.2. Gerenciamento de Entidades
+
+==== 6.2.1. Criação de Definição de Entidade
+
+*Ator Principal*: Administrador da Empresa
+
+*Fluxo Principal*:
+1. Administrador acessa a área de entidades
+2. Seleciona "Nova Entidade"
+3. Define nome, slug e esquema da entidade
+4. Configura permissões e configurações
+5. Sistema valida e cria a definição da entidade
+6. Sistema cria collection e índices necessários no banco de dados da empresa
+
+*Fluxos Alternativos*:
+- Esquema inválido: Sistema valida o esquema e exibe erros
+- Slug já existente: Sistema notifica que o slug já está em uso
+
+==== 6.2.2. Gerenciamento de Registros de Entidade
+
+*Ator Principal*: Usuário da Empresa
+
+*Fluxo Principal*:
+1. Usuário acessa a lista de registros de uma entidade
+2. Visualiza, filtra e ordena os registros
+3. Cria, edita ou exclui registros conforme permissões
+4. Sistema valida os dados conforme o esquema da entidade
+5. Sistema registra as alterações e dispara eventos relevantes
+
+*Fluxos Alternativos*:
+- Dados inválidos: Sistema valida os dados e exibe erros
+- Permissão negada: Sistema bloqueia operações não permitidas
+
+=== 6.3. Gerenciamento de Fluxos
+
+==== 6.3.1. Criação de Fluxo
+
+*Ator Principal*: Administrador da Empresa
+
+*Fluxo Principal*:
+1. Administrador acessa a área de fluxos
+2. Seleciona "Novo Fluxo"
+3. Define nome, descrição e gatilho do fluxo
+4. Configura passos do fluxo
+5. Define tratamento de erros
+6. Ativa o fluxo
+7. Sistema valida e salva o fluxo
+
+*Fluxos Alternativos*:
+- Configuração inválida: Sistema valida e exibe erros
+- Limite de plano excedido: Sistema notifica sobre limitações do plano atual
+
+==== 6.3.2. Monitoramento de Execuções
+
+*Ator Principal*: Administrador da Empresa
+
+*Fluxo Principal*:
+1. Administrador acessa a área de monitoramento
+2. Visualiza lista de execuções de fluxos
+3. Filtra por status, período, fluxo
+4. Seleciona uma execução para ver detalhes
+5. Visualiza logs de passos e erros
+6. Pode reexecutar fluxos que falharam
+
+*Fluxos Alternativos*:
+- Sem execuções: Sistema exibe mensagem informativa
+- Erro ao reexecutar: Sistema exibe detalhes do erro
+
+=== 6.4. Integração via Webhooks
+
+==== 6.4.1. Configuração de Webhook
+
+*Ator Principal*: Administrador da Empresa
+
+*Fluxo Principal*:
+1. Administrador acessa a área de webhooks
+2. Cria novo webhook associado a uma entidade
+3. Configura mapeamento de dados
+4. Sistema gera URL e chave secreta
+5. Administrador configura sistema externo para enviar dados
+
+*Fluxos Alternativos*:
+- Configuração inválida: Sistema valida e exibe erros
+- Entidade inexistente: Sistema exibe erro de referência
+
+==== 6.4.2. Recebimento de Dados via Webhook
+
+*Ator Principal*: Sistema Externo
+
+*Fluxo Principal*:
+1. Sistema externo envia dados para URL do webhook
+2. Sistema valida autenticação e formato dos dados
+3. Sistema mapeia dados para o formato da entidade
+4. Sistema cria ou atualiza registro na entidade
+5. Sistema dispara eventos associados à entidade
+
+*Fluxos Alternativos*:
+- Autenticação inválida: Sistema rejeita a requisição
+- Dados inválidos: Sistema rejeita a requisição e registra o erro
+- Limite de armazenamento excedido: Sistema notifica sobre limitação do plano
+
+== 7. Considerações de Implementação
+
+=== 7.1. Segurança
+
+==== 7.1.1. Autenticação e Autorização
+* Autenticação baseada em JWT
+* Autorização baseada em papéis e permissões
+* Validação de acesso a recursos por empresa
+* Proteção contra CSRF e XSS
+
+==== 7.1.2. Isolamento de Dados
+* Banco de dados separado por empresa
+* Validação de contexto em todas as operações
+* Auditoria de acesso a dados sensíveis
+
+==== 7.1.3. Proteção de Webhooks
+* Autenticação via chave secreta
+* Validação de origem das requisições
+* Rate limiting para prevenir abusos
+
+=== 7.2. Escalabilidade
+
+==== 7.2.1. Processamento Assíncrono
+* Uso de filas para processamento de eventos
+* Execução paralela de passos independentes
+* Retentativas automáticas para operações que falham
+
+==== 7.2.2. Distribuição de Carga
+* Balanceamento de carga entre instâncias
+* Escalabilidade horizontal dos serviços
+* Particionamento de filas por empresa
+
+==== 7.2.3. Otimização de Banco de Dados
+* Índices otimizados para padrões de acesso
+* Sharding por empresa quando necessário
+* Estratégias de cache para dados frequentemente acessados
+
+=== 7.3. Monitoramento e Observabilidade
+
+==== 7.3.1. Logs
+* Logs estruturados em formato JSON
+* Níveis de log configuráveis por ambiente
+* Centralização de logs para análise
+
+==== 7.3.2. Métricas
+* Métricas de performance por serviço
+* Métricas de uso por empresa
+* Alertas para anomalias e limites excedidos
+
+==== 7.3.3. Rastreamento
+* Rastreamento de requisições entre serviços
+* Correlação de logs entre componentes
+* Visualização de fluxos de execução
+
+=== 7.4. Backup e Recuperação
+
+==== 7.4.1. Estratégia de Backup
+* Backups diários completos
+* Backups incrementais a cada hora
+* Retenção configurável por plano
+
+==== 7.4.2. Recuperação de Desastres
+* Procedimentos documentados para recuperação
+* Testes regulares de restauração
+* Replicação geográfica para alta disponibilidade
+
+== 8. Roadmap de Desenvolvimento
+
+=== 8.1. Fase 1: MVP (1-3 meses)
+* Autenticação e gerenciamento de usuários
+* Gerenciamento básico de entidades
+* Fluxos simples com triggers de atualização
+* Ações básicas: email, API, atualização de entidade
+* Interface administrativa básica
+
+=== 8.2. Fase 2: Expansão (3-6 meses)
+* Triggers adicionais: webhook, agendamento
+* Passos avançados: condições, transformações
+* Melhorias na interface do usuário
+* Monitoramento e logs detalhados
+* Integração com WhatsApp
+
+=== 8.3. Fase 3: Enterprise (6-12 meses)
+* Fluxos complexos com ramificações
+* Editor visual de fluxos
+* Integrações com serviços populares
+* Marketplace de templates
+* Recursos avançados de análise e relatórios
+
+== 9. Conclusão
+
+O Sistema de Automação de Fluxos oferece uma plataforma flexível e escalável para empresas automatizarem seus processos de negócio. Com isolamento completo de dados, processamento assíncrono e uma arquitetura orientada a eventos, o sistema permite que empresas de diferentes tamanhos criem automações personalizadas sem necessidade de desenvolvimento personalizado.
+
+A estrutura de planos escalonáveis permite que empresas iniciem com recursos básicos e expandam conforme suas necessidades, enquanto a arquitetura de microserviços garante a escalabilidade e resiliência necessárias para operações críticas de negócio.
