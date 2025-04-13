@@ -2,6 +2,7 @@
   "name": "@fluxo-de-eventos/api-service",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/infrastructure/server/index.ts",
     "build": "tsc",
