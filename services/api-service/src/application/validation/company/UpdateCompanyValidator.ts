@@ -1,7 +1,7 @@
-import { IValidator, ValidationResult } from '../../../domain/validation/IValidator.js';
-import { UpdateCompanyInput } from '../../../domain/validation/company/CompanyValidation.js';
-import { CompanyStatus } from '../../../domain/entities/Company.js';
-import { Email } from '../../../domain/value-objects/Email.js';
+import { IValidator, ValidationResult } from '@/domain/validation/IValidator';
+import { UpdateCompanyInput } from '@/domain/validation/company/CompanyValidation';
+import { CompanyStatus } from '@/domain/entities/Company';
+import { Email } from '@/domain/value-objects/Email';
 
 export class UpdateCompanyValidator implements IValidator<UpdateCompanyInput> {
   validate(data: UpdateCompanyInput): ValidationResult {

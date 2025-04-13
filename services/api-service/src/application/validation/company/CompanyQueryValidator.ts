@@ -1,7 +1,7 @@
-import { IValidator, ValidationResult } from '../../../domain/validation/IValidator.js';
-import { CompanyQueryInput } from '../../../domain/validation/company/CompanyValidation.js';
-import { CompanyStatus } from '../../../domain/entities/Company.js';
-import { Cnpj } from '../../../domain/value-objects/Cnpj.js';
+import { IValidator, ValidationResult } from '@/domain/validation/IValidator';
+import { CompanyQueryInput } from '@/domain/validation/company/CompanyValidation';
+import { CompanyStatus } from '@/domain/entities/Company';
+import { Cnpj } from '@/domain/value-objects/Cnpj';
 
 type ValidationError = {
   field: string;

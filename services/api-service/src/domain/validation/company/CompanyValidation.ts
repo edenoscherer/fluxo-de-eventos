@@ -1,4 +1,4 @@
-import { CompanyStatus } from '../../entities/Company.js';
+import { CompanyStatus } from '@/domain/entities/Company';
 
 export interface CreateCompanyInput {
   name: string;

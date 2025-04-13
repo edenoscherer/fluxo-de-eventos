@@ -1,8 +1,8 @@
-import { IValidator, ValidationResult } from '../../../domain/validation/IValidator.js';
-import { CreateCompanyInput } from '../../../domain/validation/company/CompanyValidation.js';
-import { CompanyStatus } from '../../../domain/entities/Company.js';
-import { Email } from '../../../domain/value-objects/Email.js';
-import { Cnpj } from '../../../domain/value-objects/Cnpj.js';
+import { IValidator, ValidationResult } from '@/domain/validation/IValidator';
+import { CreateCompanyInput } from '@/domain/validation/company/CompanyValidation';
+import { CompanyStatus } from '@/domain/entities/Company';
+import { Email } from '@/domain/value-objects/Email';
+import { Cnpj } from '@/domain/value-objects/Cnpj';
 
 export class CreateCompanyValidator implements IValidator<CreateCompanyInput> {
   validate(data: CreateCompanyInput): ValidationResult {

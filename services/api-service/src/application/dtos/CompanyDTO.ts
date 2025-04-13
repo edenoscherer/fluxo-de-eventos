@@ -1,6 +1,6 @@
-import { Company, CompanyStatus } from '../../domain/entities/Company.js';
-import { Email } from '../../domain/value-objects/Email.js';
-import { Cnpj } from '../../domain/value-objects/Cnpj.js';
+import { Company, CompanyStatus } from '@/domain/entities/Company';
+import { Email } from '@/domain/value-objects/Email';
+import { Cnpj } from '@/domain/value-objects/Cnpj';
 import {
   CreateCompanyInput,
   UpdateCompanyInput,

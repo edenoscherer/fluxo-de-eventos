@@ -1,4 +1,4 @@
-import { Company } from '../entities/Company.js';
+import { Company } from '@/domain/entities/Company';
 
 export interface ICompanyRepository {
   create(company: Company): Promise<Company>;

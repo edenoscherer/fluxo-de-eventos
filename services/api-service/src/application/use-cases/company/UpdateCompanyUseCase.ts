@@ -1,7 +1,7 @@
-import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
-import { CompanyDTO, CompanyMapper } from '../../dtos/CompanyDTO.js';
-import { UpdateCompanyInput } from '../../../domain/validation/company/CompanyValidation.js';
-import { Email } from '../../../domain/value-objects/Email.js';
+import { ICompanyRepository } from '@/domain/repositories/ICompanyRepository';
+import { CompanyDTO, CompanyMapper } from '@/application/dtos/CompanyDTO';
+import { UpdateCompanyInput } from '@/domain/validation/company/CompanyValidation';
+import { Email } from '@/domain/value-objects/Email';
 
 export class UpdateCompanyUseCase {
   constructor(private readonly companyRepository: ICompanyRepository) {}

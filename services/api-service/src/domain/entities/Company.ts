@@ -1,5 +1,5 @@
-import { Email } from '../value-objects/Email.js';
-import { Cnpj } from '../value-objects/Cnpj.js';
+import { Email } from '@/domain/value-objects/Email';
+import { Cnpj } from '@/domain/value-objects/Cnpj';
 
 export const CompanyStatus = {
   ACTIVE: 'active',
