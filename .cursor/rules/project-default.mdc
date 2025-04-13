@@ -1,0 +1,128 @@
+---
+description: Projeto de Automação de Fluxos
+globs: 
+alwaysApply: true
+---
+// Projeto de Automação de Fluxos
+// Regras para o Cursor AI
+
+// Tecnologias e Stack
+Estamos construindo um sistema de automação de fluxos com microserviços usando:
+- TypeScript como linguagem principal
+- Express.js para APIs REST (sem NestJS)
+- MongoDB como banco de dados principal
+- Mongoose para ODM
+- BullMQ para filas e processamento assíncrono
+- Redis como backend para BullMQ e cache
+- JWT para autenticação
+- Zod para validação de dados
+- React com TypeScript para o frontend
+- Material UI para componentes de interface
+
+// Arquitetura e Padrões
+Seguimos uma arquitetura limpa (Clean Architecture) com as seguintes camadas:
+1. Domain Layer: Entidades e regras de negócio puras
+2. Application Layer: Casos de uso e lógica de aplicação
+3. Interface Adapters: Controllers, Gateways, Presenters
+4. Frameworks & Drivers: Express, MongoDB, BullMQ
+
+// Estrutura de Pastas
+src/
+├── domain/                # Regras de negócio e entidades
+│   ├── entities/          # Entidades de domínio
+│   ├── repositories/      # Interfaces de repositórios
+│   ├── services/          # Serviços de domínio
+│   └── value-objects/     # Objetos de valor
+├── application/           # Casos de uso e lógica de aplicação
+│   ├── dtos/              # Data Transfer Objects
+│   ├── interfaces/        # Interfaces da camada de aplicação
+│   └── use-cases/         # Implementação dos casos de uso
+├── adapters/              # Adaptadores de interface
+│   ├── controllers/       # Controladores HTTP
+│   ├── gateways/          # Implementações de repositórios
+│   └── presenters/        # Formatadores de resposta
+├── infrastructure/        # Frameworks e drivers
+│   ├── database/          # Configuração e modelos do MongoDB
+│   ├── messaging/         # Configuração do BullMQ
+│   ├── server/            # Configuração do Express
+│   └── services/          # Serviços externos (email, WhatsApp)
+└── utils/                 # Utilitários compartilhados
+
+// Princípios SOLID
+1. Single Responsibility Principle: Cada classe deve ter apenas uma razão para mudar
+2. Open/Closed Principle: Entidades devem ser abertas para extensão, fechadas para modificação
+3. Liskov Substitution Principle: Tipos derivados devem ser substituíveis por seus tipos base
+4. Interface Segregation Principle: Interfaces específicas são melhores que uma interface geral
+5. Dependency Inversion Principle: Dependa de abstrações, não de implementações concretas
+
+// Convenções de Código TypeScript
+- Use tipos explícitos sempre que possível
+- Evite o uso de "any"
+- Prefira interfaces para definir contratos e types para unions/aliases
+- Use enums para valores fixos e conhecidos
+- Utilize generics para criar componentes reutilizáveis e type-safe
+- Implemente error handling adequado com tipos de erro personalizados
+- Use async/await para código assíncrono (evite callbacks aninhados)
+- Utilize optional chaining (?.) e nullish coalescing (??) para código mais limpo
+
+// Padrões de Nomenclatura
+- PascalCase para classes, interfaces, tipos e enums
+- camelCase para variáveis, funções e métodos
+- UPPER_CASE para constantes
+- Prefixo "I" para interfaces (ex: IUserRepository)
+- Sufixo "Repository" para repositórios
+- Sufixo "Service" para serviços
+- Sufixo "Controller" para controladores
+- Sufixo "UseCase" para casos de uso
+
+// Clean Code
+- Funções pequenas e com propósito único
+- Nomes descritivos e significativos
+- Evite comentários desnecessários (o código deve ser autoexplicativo)
+- Máximo de 3 parâmetros por função
+- Evite efeitos colaterais
+- Trate erros adequadamente
+- Evite duplicação de código (DRY - Don't Repeat Yourself)
+- Prefira composição sobre herança
+
+// Microserviços
+Nosso sistema é dividido em três microserviços:
+1. API Service: Gerencia operações CRUD e comunicação com frontend
+2. Data Ingestion Service: Recebe dados via webhooks e API
+3. Event Processor Service: Processa eventos e executa fluxos
+
+// Comunicação entre Serviços
+- Utilizamos BullMQ para comunicação assíncrona entre serviços
+- Cada serviço tem seu próprio banco de dados MongoDB
+- Implementamos o padrão Outbox para garantir entrega de mensagens
+
+// Isolamento de Dados
+- Cada empresa tem seu próprio banco de dados MongoDB
+- Nomenclatura: company_{companyId}
+- Banco de dados global apenas para dados do sistema (empresas, usuários, planos)
+
+// Testes
+- Utilizamos Vitest como framework de testes
+- Testes unitários para regras de negócio
+- Testes de integração para APIs
+- Mocks para dependências externas
+- Cobertura mínima de 80% para código de produção
+
+// Documentação
+- Documentação de API com Swagger/OpenAPI
+- README.md em cada diretório explicando seu propósito
+- JSDoc para funções e classes importantes
+
+// Versionamento
+- Seguimos Semantic Versioning (SemVer)
+- Commits seguem o padrão Conventional Commits
+
+// Quando gerar código:
+- Implemente seguindo a arquitetura limpa
+- Respeite os princípios SOLID
+- Siga as convenções de nomenclatura
+- Adicione tratamento de erros adequado
+- Inclua validação de dados com Zod
+- Considere a performance e escalabilidade
+- Implemente logs para operações importantes
+- Adicione comentários apenas quando necessário para explicar "por quê", não "o quê"
