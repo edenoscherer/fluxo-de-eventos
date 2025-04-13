@@ -1,6 +1,6 @@
 import { ICompanyRepository } from '../../../domain/repositories/ICompanyRepository.js';
 import { CompanyDTO, CompanyMapper } from '../../dtos/CompanyDTO.js';
-import { CreateCompanyInput } from '../../validation/CompanySchemas.js';
+import { CreateCompanyInput } from '../../../domain/validation/company/CompanyValidation.js';
 import { Cnpj } from '../../../domain/value-objects/Cnpj.js';
 import { Email } from '../../../domain/value-objects/Email.js';
 
