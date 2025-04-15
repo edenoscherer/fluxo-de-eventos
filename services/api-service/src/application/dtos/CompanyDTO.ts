@@ -4,8 +4,7 @@ import { Cnpj } from '@/domain/value-objects/Cnpj';
 import {
   CreateCompanyInput,
   UpdateCompanyInput,
-  CompanyQueryInput,
-} from '../validation/CompanySchemas';
+} from '@/domain/validation/company/CompanyValidation';
 
 export interface CompanyDTO {
   id?: string;
